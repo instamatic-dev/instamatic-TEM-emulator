@@ -270,7 +270,7 @@ class Stage:
                 # Crystal is completely on the grid
                 continue
 
-            reflections += self.crystals[sample.crystal_index].diffraction_pattern_mask(
+            reflections += self.crystals[sample.crystal_index].diffraction_pattern(
                 shape,
                 d_min=d_min,
                 rotation_matrix=self.rotation_matrix @ sample.rotation_matrix,

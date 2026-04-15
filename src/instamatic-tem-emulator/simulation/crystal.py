@@ -4,7 +4,6 @@ from typing import Type, TypeVar
 
 import numpy as np
 from diffpy import structure as diffpy
-from diffsims.crystallography._diffracting_vector import DiffractingVector
 from diffsims.generators.simulation_generator import Simulation2D, SimulationGenerator
 from orix.crystal_map import Phase
 from orix.quaternion import Rotation
@@ -156,7 +155,7 @@ class Crystal:
         vecs = self.lattice.reciprocal().cartesian(hkls)
         return vecs
 
-    def diffraction_pattern_mask(
+    def diffraction_pattern(
         self,
         shape: tuple[int, int],
         d_min: float,
@@ -215,6 +214,8 @@ class Crystal:
                 calibration=1 / d_min / (shape[0] / 2),
             )
             return pattern * intensity_scale
+
+        # code below only works with https://github.com/pyxem/diffsims/pull/232
         optical_axis = rotation * Vector3d.zvector()
 
         # Calculate the reciprocal lattice vectors that intersect the Ewald sphere.
