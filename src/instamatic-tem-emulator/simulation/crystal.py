@@ -65,11 +65,6 @@ class Crystal:
             lattice=self.lattice,
         )
         self.phase = Phase(space_group=space_group, structure=self.structure)
-        # self.recip = DiffractingVector.from_min_dspacing(
-        #     self.phase,
-        #     min_dspacing=1,
-        #     include_zero_vector=False,
-        # )  raises exception to use ReciprocalLatticeVector instead - version 0.7.0 issue?
         self.recip = Vector3D.from_min_dspacing(
             self.phase,
             min_dspacing=1,
@@ -201,10 +196,25 @@ class Crystal:
         max_excitation_error = excitation_error
 
         rotation = Rotation.from_matrix(rotation_matrix)
-        from diffsims.generators.simulation_generator import (
-            Vector3d,
-            get_intersection_with_ewalds_sphere,
-        )
+        try:
+            from diffsims.generators.simulation_generator import (
+                Vector3d,
+                get_intersection_with_ewalds_sphere,
+            )
+        except ImportError:
+            sim = gen.calculate_diffraction2d(
+                phase=self.phase,
+                rotation=rotation,
+                reciprocal_radius=1 / d_min,
+                with_direct_beam=False,
+                max_excitation_error=max_excitation_error,
+            )
+            pattern = sim.get_diffraction_pattern(
+                shape=shape,
+                sigma=1,
+                calibration=1 / d_min / (shape[0] / 2),
+            )
+            return pattern * intensity_scale
         optical_axis = rotation * Vector3d.zvector()
 
         # Calculate the reciprocal lattice vectors that intersect the Ewald sphere.
