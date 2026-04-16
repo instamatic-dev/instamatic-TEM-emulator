@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Tuple
 
 import numpy as np
@@ -78,16 +79,23 @@ class CameraEmulator(CameraBase):
         shape = (shape_x // binsize, shape_y // binsize)
 
         if mode == 'diff':
-            return self.stage.get_diffraction_pattern(
-                shape=shape, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
-            )
+            image_factory = self.stage.get_diffraction_pattern
         else:
-            img = self.stage.get_image(
-                shape=shape, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
-            )
-            # Add some noise
-            img += np.random.random_integers(1, 10, shape).astype(img.dtype)
-            return img
+            image_factory = self.stage.get_image
+
+        t_start = time.perf_counter()
+        img = image_factory(shape=shape, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
+        img += np.random.randint(low=1, high=10, size=shape, dtype=img.dtype)
+
+        t_deadline = t_start + exposure
+        t_remaining = t_deadline - time.perf_counter()
+        if t_remaining > 0:
+            if t_remaining > 0.002:
+                time.sleep(t_remaining - 0.001)
+            while time.perf_counter() < t_deadline:
+                pass
+
+        return img
 
     def _mag_to_ranges(self, mag: float) -> Tuple[float, float, float, float]:
         # assume 50x = 2mm full size
