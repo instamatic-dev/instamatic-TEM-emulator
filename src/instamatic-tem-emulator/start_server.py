@@ -1,9 +1,11 @@
 import datetime
+import inspect
 import logging
 import socket
 import threading
 import time
 import traceback
+import uuid
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from functools import partial
@@ -20,6 +22,7 @@ from instamatic.server.serializer import dumper, loader
 from simulation.camera import CameraEmulator
 
 
+_generators = {}
 stop_program_event = threading.Event()
 
 TEM_PORT = config.settings.tem_server_port
@@ -121,6 +124,10 @@ class EmulatedDeviceServer(threading.Thread):
                 try:
                     ret = self.evaluate(func_name, args, kwargs)
                     status = 200
+                    if inspect.isgenerator(ret):
+                        gen_id = uuid.uuid4().hex
+                        _generators[gen_id] = ret
+                        ret = {'__generator__': gen_id}
                 except Exception as e:
                     traceback.print_exc()
                     self._device_kind.log.exception(e)
@@ -133,6 +140,33 @@ class EmulatedDeviceServer(threading.Thread):
         self._device_kind.log.info('Terminating ' + thread_desc)
 
     def evaluate(self, func_name: str, args: list, kwargs: dict) -> Any:
+        """Eval function `func_name` on `self.device` with `args` & `kwargs`."""
+        self._device_kind.log.debug(f'eval {func_name}, {args}, {kwargs}')
+
+        if func_name == '__gen_next__':
+            gen = _generators[kwargs['id']]
+            try:
+                ret = next(gen)
+                SharedImageProxy.push(image=ret)
+                return {'name': NAME, 'shape': ret.shape, 'dtype': str(ret.dtype)}
+            except StopIteration:
+                del _generators[kwargs['id']]
+                return
+
+        if func_name == "__gen_close__":
+            _generators.pop(kwargs['id'], None)
+            return
+
+        f = getattr(self.device, func_name)
+        ret = f(*args, **kwargs) if callable(f) else f
+
+        if func_name in {'get_image', }:
+            SharedImageProxy.push(image=ret)
+            ret = {'name': NAME, 'shape': ret.shape, 'dtype': str(ret.dtype)}
+
+        return ret
+
+    def old_evaluate(self, func_name: str, args: list, kwargs: dict) -> Any:
         """Eval and call `self._device.func_name` with `args` and `kwargs`."""
         self._device_kind.log.debug(f'eval {func_name}, {args}, {kwargs}')
         f = getattr(self.device, func_name)
