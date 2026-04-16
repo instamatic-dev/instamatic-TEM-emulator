@@ -166,19 +166,6 @@ class EmulatedDeviceServer(threading.Thread):
 
         return ret
 
-    def old_evaluate(self, func_name: str, args: list, kwargs: dict) -> Any:
-        """Eval and call `self._device.func_name` with `args` and `kwargs`."""
-        self._device_kind.log.debug(f'eval {func_name}, {args}, {kwargs}')
-        f = getattr(self.device, func_name)
-        try:
-            ret = f(*args, **kwargs)
-        except TypeError:  # TypeError: 'attribute class' object is not callable
-            ret = f
-        if func_name in {'get_image', 'get_movie'}:
-            SharedImageProxy.push(image=ret)
-            ret = {'name': NAME, 'shape': ret.shape, 'dtype': str(ret.dtype)}
-        return ret
-
 
 def handle(connection: socket.socket, device_kind: EmulatedDeviceKind) -> None:
     """Pass commands via connection on the queue to server, register response"""
