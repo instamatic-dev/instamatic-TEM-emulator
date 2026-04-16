@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Tuple
+from typing import Tuple, Optional, Generator
 
 import numpy as np
 
@@ -96,6 +96,16 @@ class CameraEmulator(CameraBase):
                 pass
 
         return img
+
+    def get_movie(
+        self,
+        n_frames: int,
+        exposure: Optional[float] = None,
+        binsize: Optional[int] = None,
+        **kwargs,
+    ) -> Generator[np.ndarray, None, None]:
+        for _ in range(n_frames):
+            yield self.get_image(exposure=exposure, binsize=binsize, **kwargs)
 
     def _mag_to_ranges(self, mag: float) -> Tuple[float, float, float, float]:
         # assume 50x = 2mm full size
