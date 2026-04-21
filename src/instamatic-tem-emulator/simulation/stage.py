@@ -311,11 +311,7 @@ class Stage:
 
         reflections = np.zeros(shape, dtype=float)
 
-        for sample in self.samples:
-            if not sample.range_might_contain_crystal(
-                x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
-            ):
-                continue
+        for sample in self._samples_near_rect(x_min, x_max, y_min, y_max):
             pos = sample.pixel_contains_crystal(x, y)
             if np.all(grid_mask[pos]):
                 # Crystal is completely on the grid
