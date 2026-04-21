@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
+from scipy.spatial import KDTree
 from scipy.spatial.transform import Rotation
 
 from .crystal import Crystal
@@ -48,7 +49,7 @@ class Stage:
             Crystal(*self.rng.uniform(5, 25, 3), *self.rng.uniform(80, 110, 3)),
         ]
 
-        # gr = self.grid.radius_nm
+        #
         # centers = self.rng.uniform(-gr, gr, size=(2, num_crystals))
         self.samples = self._init_samples(num_crystals, min_crystal_size, max_crystal_size)
 
@@ -58,17 +59,50 @@ class Stage:
         min_crystal_size: float = 100,
         max_crystal_size: float = 3_000,
     ) -> list[Sample]:
-        """Simulate samples on a grid. For details, see __init__.doc."""
-        return [Sample(
-            x=self.rng.uniform(-self.grid.radius_nm, self.grid.radius_nm),
-            y=self.rng.uniform(-self.grid.radius_nm, self.grid.radius_nm),
-            r=self.rng.uniform(min_crystal_size, max_crystal_size),
-            thickness=self.rng.uniform(0, 1),
-            euler_angle_phi_1=self.rng.uniform(0, 2 * np.pi),
-            euler_angle_psi=self.rng.uniform(0, np.pi),
-            euler_angle_phi_2=self.rng.uniform(0, 2 * np.pi),
-        )
-        for _ in range(num_crystals)]
+        """Simulate samples on a grid. For docstring, see __init__.doc."""
+        r = self.grid.radius_nm
+        lows = [-r, -r, min_crystal_size, 0, 0, 0, 0]
+        highs = [r, r, max_crystal_size, 1, 2 * np.pi, np.pi, 2 * np.pi]
+        randoms = self.rng.uniform(lows, highs, size=(num_crystals, 7))
+        self._kdtree = KDTree(randoms[:, :2])
+        self._max_r = float(randoms[:, 2].max())
+        return [Sample(*r) for r in randoms]
+
+    def _samples_near_circle(self, x: float, y: float, r: float) -> list[Sample]:
+        candidates_idx = self._kdtree.query_ball_point([x, y], r + self._max_r)
+        candidates = [self.samples[i] for i in candidates_idx]
+        in_r = [(c.x - x) ** 2 + (c.y - y) ** 2 <= (r + c.r) ** 2 for c in candidates]
+        return [c for c, b in zip(candidates, in_r) if b]
+
+    def _samples_near_rect(
+        self,
+        x_min: float,
+        x_max: float,
+        y_min: float,
+        y_max: float,
+    ) -> list[Sample]:
+        """Simple estimate of samples in the range. This check is fast but
+        inaccurate. False positives are possible, false negatives are not.
+
+        Parameters
+        ----------
+        x_min : float
+            Lower bound for x
+        x_max : float
+            Upper bound for x
+        y_min : float
+            Lower bound for y
+        y_max : float
+            Upper bound for y
+
+        Returns
+        -------
+        list[Sample]
+            List of the samples that may lie in the rectangle.
+        """
+        cx, cy = (x_min + x_max) / 2, (y_min + y_max) / 2
+        half_diag = np.hypot((x_max - x_min) / 2, (y_max - y_min) / 2)
+        return self._samples_near_circle(cx, cy, half_diag)
 
     @property
     def origin(self) -> np.ndarray:
@@ -206,11 +240,12 @@ class Stage:
         grid_mask = self.grid.array_from_coords(x, y)
 
         sample_data = np.full(shape, fill_value=0xF000, dtype=np.uint32)
-        for ind, sample in enumerate(self.samples):
-            if not sample.range_might_contain_crystal(
-                x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
-            ):
-                continue
+        #for ind, sample in enumerate(self.samples):
+        for ind, sample in enumerate(self._samples_near_rect(x_min, x_max, y_min, y_max)):
+            # if not sample.range_might_contain_crystal(
+            #     x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
+            # ):
+            #     continue
             # TODO better logic here
             sample_data[sample.pixel_contains_crystal(x, y)] = np.round(
                 0xF000 * (1 - sample.thickness)
