@@ -19,7 +19,7 @@ class CameraEmulator(CameraBase):
         self.tem = tem
 
         # TODO put parameters into config
-        self.stage = Stage()
+        self._stage = Stage()
         self.mag = None
 
     def establish_connection(self):
@@ -44,7 +44,7 @@ class CameraEmulator(CameraBase):
         pos = self.tem.getStagePosition()
         if pos is not None and len(pos) == 5:
             x, y, z, alpha, beta = pos
-            self.stage.set_position(x=x, y=y, z=z, alpha_tilt=alpha, beta_tilt=beta)
+            self._stage.set_position(x=x, y=y, z=z, alpha_tilt=alpha, beta_tilt=beta)
 
         mode = self.tem.getFunctionMode()
 
@@ -63,10 +63,10 @@ class CameraEmulator(CameraBase):
 
         # TODO consider beam shift, tilt ect.
         x_min, x_max, y_min, y_max = self._mag_to_ranges(self.mag)
-        x_min += self.stage.x
-        x_max += self.stage.x
-        y_min += self.stage.y
-        y_max += self.stage.y
+        x_min += self._stage.x
+        x_max += self._stage.x
+        y_min += self._stage.y
+        y_max += self._stage.y
 
         # TODO I mean properly considering them, this has no regard for units ect
         bx, by = self.tem.getBeamShift()
@@ -79,9 +79,9 @@ class CameraEmulator(CameraBase):
         shape = (shape_x // binsize, shape_y // binsize)
 
         if mode == 'diff':
-            image_factory = self.stage.get_diffraction_pattern
+            image_factory = self._stage.get_diffraction_pattern
         else:
-            image_factory = self.stage.get_image
+            image_factory = self._stage.get_image
 
         t_start = time.perf_counter()
         img = image_factory(shape=shape, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
@@ -121,7 +121,8 @@ class CameraEmulator(CameraBase):
             obj = getattr(self, item)
             if not callable(obj):
                 attrs[item] = type(obj)
-
+        for k, v in attrs.items():
+            print(f'{k}: {v}')
         return attrs
 
     def get_image_dimensions(self) -> Tuple[int, int]:
