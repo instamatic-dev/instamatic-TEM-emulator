@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Tuple, Optional, Generator
+from typing import Generator, Optional
 
 import numpy as np
 
@@ -107,7 +107,7 @@ class CameraEmulator(CameraBase):
         for _ in range(n_frames):
             yield self.get_image(exposure=exposure, binsize=binsize, **kwargs)
 
-    def _mag_to_ranges(self, mag: float) -> Tuple[float, float, float, float]:
+    def _mag_to_ranges(self, mag: float) -> tuple[float, float, float, float]:
         # assume 50x = 2mm full size
         half_width = 50 * 1e6 / mag  # 2mm/2 in nm is 1e6
         return -half_width, half_width, -half_width, half_width
@@ -125,5 +125,5 @@ class CameraEmulator(CameraBase):
             print(f'{k}: {v}')
         return attrs
 
-    def get_image_dimensions(self) -> Tuple[int, int]:
+    def get_image_dimensions(self) -> tuple[int, int]:
         return self.get_camera_dimensions()
