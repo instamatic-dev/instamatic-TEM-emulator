@@ -48,9 +48,6 @@ class Stage:
             Crystal(20, 20, 20, 90, 90, 90, 221),
             Crystal(*self.rng.uniform(5, 25, 3), *self.rng.uniform(80, 110, 3)),
         ]
-
-        #
-        # centers = self.rng.uniform(-gr, gr, size=(2, num_crystals))
         self.samples = self._init_samples(num_crystals, min_crystal_size, max_crystal_size)
 
     def _init_samples(
@@ -69,6 +66,23 @@ class Stage:
         return [Sample(*r) for r in randoms]
 
     def _samples_near_circle(self, x: float, y: float, r: float) -> list[Sample]:
+        """Simple estimate of samples near input circle. This check is fast but
+        inaccurate. False positives are possible, false negatives are not.
+
+        Parameters
+        ----------
+        x : float
+            x coordinate of the circle center
+        y : float
+            y coordinate of the circle center
+        r : float
+            radius of the circle intersecting samples
+
+        Returns
+        -------
+        list[Sample]
+            List of the samples that may lie in the input circle.
+        """
         candidates_idx = self._kdtree.query_ball_point([x, y], r + self._max_r)
         candidates = [self.samples[i] for i in candidates_idx]
         in_r = [(c.x - x) ** 2 + (c.y - y) ** 2 <= (r + c.r) ** 2 for c in candidates]
@@ -81,8 +95,8 @@ class Stage:
         y_min: float,
         y_max: float,
     ) -> list[Sample]:
-        """Simple estimate of samples in the range. This check is fast but
-        inaccurate. False positives are possible, false negatives are not.
+        """Simple estimate of samples near input rectangle. This check is fast
+        but inaccurate. False positives are possible, false negatives are not.
 
         Parameters
         ----------
@@ -98,7 +112,7 @@ class Stage:
         Returns
         -------
         list[Sample]
-            List of the samples that may lie in the rectangle.
+            List of the samples that may lie in the input rectangle.
         """
         cx, cy = (x_min + x_max) / 2, (y_min + y_max) / 2
         half_diag = np.hypot((x_max - x_min) / 2, (y_max - y_min) / 2)
@@ -240,17 +254,10 @@ class Stage:
         grid_mask = self.grid.array_from_coords(x, y)
 
         sample_data = np.full(shape, fill_value=0xF000, dtype=np.uint32)
-        #for ind, sample in enumerate(self.samples):
-        for ind, sample in enumerate(self._samples_near_rect(x_min, x_max, y_min, y_max)):
-            # if not sample.range_might_contain_crystal(
-            #     x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
-            # ):
-            #     continue
-            # TODO better logic here
+        for sample in self._samples_near_rect(x_min, x_max, y_min, y_max):
             sample_data[sample.pixel_contains_crystal(x, y)] = np.round(
                 0xF000 * (1 - sample.thickness)
             )
-
         sample_data[grid_mask] = 0
 
         return sample_data
