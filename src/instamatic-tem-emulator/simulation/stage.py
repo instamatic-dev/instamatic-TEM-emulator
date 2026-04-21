@@ -48,18 +48,27 @@ class Stage:
             Crystal(*self.rng.uniform(5, 25, 3), *self.rng.uniform(80, 110, 3)),
         ]
 
-        self.samples = [
-            Sample(
-                x=self.rng.uniform(-self.grid.radius_nm, self.grid.radius_nm),
-                y=self.rng.uniform(-self.grid.radius_nm, self.grid.radius_nm),
-                r=self.rng.uniform(min_crystal_size, max_crystal_size),
-                thickness=self.rng.uniform(0, 1),
-                euler_angle_phi_1=self.rng.uniform(0, 2 * np.pi),
-                euler_angle_psi=self.rng.uniform(0, np.pi),
-                euler_angle_phi_2=self.rng.uniform(0, 2 * np.pi),
-            )
-            for _ in range(num_crystals)
-        ]
+        # gr = self.grid.radius_nm
+        # centers = self.rng.uniform(-gr, gr, size=(2, num_crystals))
+        self.samples = self._init_samples(num_crystals, min_crystal_size, max_crystal_size)
+
+    def _init_samples(
+        self,
+        num_crystals: int = 100_000,
+        min_crystal_size: float = 100,
+        max_crystal_size: float = 3_000,
+    ) -> list[Sample]:
+        """Simulate samples on a grid. For details, see __init__.doc."""
+        return [Sample(
+            x=self.rng.uniform(-self.grid.radius_nm, self.grid.radius_nm),
+            y=self.rng.uniform(-self.grid.radius_nm, self.grid.radius_nm),
+            r=self.rng.uniform(min_crystal_size, max_crystal_size),
+            thickness=self.rng.uniform(0, 1),
+            euler_angle_phi_1=self.rng.uniform(0, 2 * np.pi),
+            euler_angle_psi=self.rng.uniform(0, np.pi),
+            euler_angle_phi_2=self.rng.uniform(0, 2 * np.pi),
+        )
+        for _ in range(num_crystals)]
 
     @property
     def origin(self) -> np.ndarray:
