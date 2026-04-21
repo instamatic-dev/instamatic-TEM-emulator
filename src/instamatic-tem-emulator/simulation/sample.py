@@ -45,37 +45,3 @@ class Sample:
             Same shape as inputs, dtype bool
         """
         return (x - self.x) ** 2 + (y - self.y) ** 2 < self.r**2
-
-    def range_might_contain_crystal(
-        self,
-        x_min: float,
-        x_max: float,
-        y_min: float,
-        y_max: float,
-    ) -> bool:
-        """Simple estimate of whether a range contains the crystal. This check
-        is fast but inaccurate. False positives are possible, false negatives
-        are impossible.
-
-        Parameters
-        ----------
-        x_min : float
-            Lower bound for x
-        x_max : float
-            Upper bound for x
-        y_min : float
-            Lower bound for y
-        y_max : float
-            Upper bound for y
-
-        Returns
-        -------
-        bool
-            True if range contains crystal
-        """
-        # TODO ensure the docstring is true, regarding false negatives.
-        # TODO improve estimate?
-        # TODO handle this correctly when stage is rotated...
-        in_x = x_min <= self.x + self.r and self.x - self.r <= x_max
-        in_y = y_min <= self.y + self.r and self.y - self.r <= y_max
-        return in_x and in_y

@@ -83,6 +83,7 @@ class Stage:
         list[Sample]
             List of the samples that may lie in the input circle.
         """
+        # TODO handle this correctly when stage is rotated...
         candidates_idx = self._kdtree.query_ball_point([x, y], r + self._max_r)
         candidates = [self.samples[i] for i in candidates_idx]
         in_r = [(c.x - x) ** 2 + (c.y - y) ** 2 <= (r + c.r) ** 2 for c in candidates]
@@ -114,9 +115,15 @@ class Stage:
         list[Sample]
             List of the samples that may lie in the input rectangle.
         """
+        # TODO handle this correctly when stage is rotated...
         cx, cy = (x_min + x_max) / 2, (y_min + y_max) / 2
         half_diag = np.hypot((x_max - x_min) / 2, (y_max - y_min) / 2)
-        return self._samples_near_circle(cx, cy, half_diag)
+        candidates_idx = self._kdtree.query_ball_point([cx, cy], half_diag + self._max_r)
+        candidates = cds = [self.samples[i] for i in candidates_idx]
+        nx = np.array([min(max(c.x, x_min), x_max) for c in candidates])
+        ny = np.array([min(max(c.y, y_min), y_max) for c in candidates])
+        d2 = np.array([(x - c.x) ** 2 + (y - c.y) ** 2 for c, x, y in zip(cds, nx, ny)])
+        return [c for c, d in zip(candidates, d2) if d <= c.r ** 2]
 
     @property
     def origin(self) -> np.ndarray:
